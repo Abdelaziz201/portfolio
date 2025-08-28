@@ -1,8 +1,20 @@
 import { ArrowDown } from "lucide-react";
-
+import { useEffect, useState } from "react";
 
 export const HeroSection = () => {
+    const [showScroll, setShowScroll] = useState(true);
+    useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setShowScroll(false);
+      } else {
+        setShowScroll(true);
+      }
+    };
 
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
     return ( 
     <section id="hero" className="relative min-h-screen flex flex-col item-center justify-center px-4">
         <div className="container max-w-4xl mx-auto text-center relative z-10">
@@ -29,10 +41,14 @@ export const HeroSection = () => {
             </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-bounce">
-            <span className="text-sm text-muted-foreground mb-2 "> Scroll </span>
+        {/* Only show if user hasn’t scrolled */}
+        
+        {showScroll && (
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-bounce transition-opacity duration-500">
+            <span className="text-sm text-muted-foreground mb-2"> Scroll </span>
             <ArrowDown className="h-5 w-5 text-primary" />
-        </div>
+            </div>
+        )}
     </section>
 
     );
