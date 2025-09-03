@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {cn} from '@/lib/utils';
 
+
 const skills = [
     // Frontend
   { name: "HTML/CSS", level: 95, category: "frontend" },
@@ -64,7 +65,7 @@ export const SkillsSection = () =>{
                             </div>    
                         </div>    
                     )) }
-                </div>           
+                </div>          
             </div>
         </section>
     );

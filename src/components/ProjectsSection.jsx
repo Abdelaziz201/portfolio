@@ -101,6 +101,7 @@
 
 import { ExternalLink, Github, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useState } from "react";
+import { ArrowRight } from "lucide-react";
 
 const projects = [
   {
@@ -344,6 +345,14 @@ export const ProjectsSection = () => {
           </div>
         </div>
       )}
+        <div className="text-center mt-12">
+            <a className="cosmic-button w-fit flex items-center mx-auto gap-2" 
+              target="_blank" 
+              href="https://github.com/Abdelaziz201"
+              >
+              Check My Github <ArrowRight size={16}/>
+            </a>
+        </div> 
     </section>
   );
 };
