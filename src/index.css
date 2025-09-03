@@ -171,3 +171,37 @@
   padding: 0;
   text-align: center;
 }
+
+
+.scroll-indicator-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem; /* This sets a consistent gap of 40px between children elements */
+}
+
+.scroll-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: bounce 1s infinite;
+  transition: opacity 0.5s;
+}
+
+/* Keyframes for the bounce animation */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/*scroll-indicator-container... */
+
+@media (min-width: 768px) {
+  .scroll-indicator-container {
+    gap: 5rem; /* Increase the gap for screens 768px and wider (desktop) */
+  }
+}
