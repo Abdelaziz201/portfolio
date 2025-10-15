@@ -6,6 +6,7 @@ import aboutMeRouter from "./routes/aboutMe.router.js";
 import getInTouchRouter from "./routes/getInTouch.router.js";   
 import projectsRouter from "./routes/projects.router.js";
 import skillsRouter from "./routes/skills.router.js";
+import authRouter from "./routes/auth.router.js";
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ app.use("/api/aboutMe", aboutMeRouter);
 app.use("/api/getInTouch", getInTouchRouter);       
 app.use("/api/projects", projectsRouter);
 app.use("/api/skills", skillsRouter);
-    
+app.use("/api/auth", authRouter);
 
 app.listen(PORT, () =>{
     connectDB();
