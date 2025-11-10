@@ -18,14 +18,13 @@ app.use(express.json());
 
 
 
-
 app.use("/api/aboutMe", aboutMeRouter);
 app.use("/api/getInTouch", getInTouchRouter);       
 app.use("/api/projects", projectsRouter);
 app.use("/api/skills", skillsRouter);
-app.use("/api/auth", authRouter);
+//app.use("/api/auth", authRouter);
 
 app.listen(PORT, () =>{
     connectDB();
-    console.log(`Server is running on ${PORT}`);
+    console.log('Server started at http://localhost:' + PORT);
 })
