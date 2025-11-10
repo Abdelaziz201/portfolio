@@ -4,9 +4,10 @@ import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
 import aboutMeRouter from "./routes/aboutMe.router.js";
 import getInTouchRouter from "./routes/getInTouch.router.js";   
+import contactInfoRouter from "./routes/contactInfo.router.js";
 import projectsRouter from "./routes/projects.router.js";
 import skillsRouter from "./routes/skills.router.js";
-import authRouter from "./routes/auth.router.js";
+//import authRouter from "./routes/auth.router.js";
 
 dotenv.config();
 
@@ -19,7 +20,8 @@ app.use(express.json());
 
 
 app.use("/api/aboutMe", aboutMeRouter);
-app.use("/api/getInTouch", getInTouchRouter);       
+app.use("/api/getInTouch", getInTouchRouter);
+app.use("/api/contactInfo", contactInfoRouter);       
 app.use("/api/projects", projectsRouter);
 app.use("/api/skills", skillsRouter);
 //app.use("/api/auth", authRouter);

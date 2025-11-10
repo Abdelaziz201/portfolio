@@ -93,3 +93,53 @@ export const PASSWORD_RESET_REQUEST_TEMPLATE = `
 </body>
 </html>
 `;
+
+export const CONTACT_FORM_NOTIFICATION_TEMPLATE = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Contact Form Message</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(to right, #8B5CF6, #7C3AED); padding: 20px; text-align: center;">
+    <h1 style="color: white; margin: 0;">New Contact Form Message</h1>
+  </div>
+  <div style="background-color: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+    <p>Hello,</p>
+    <p>You have received a new message from your portfolio contact form:</p>
+    
+    <div style="background-color: white; padding: 20px; margin: 20px 0; border-left: 4px solid #8B5CF6; border-radius: 4px;">
+      <div style="margin-bottom: 15px;">
+        <strong style="color: #8B5CF6; display: block; margin-bottom: 5px;">From:</strong>
+        <p style="margin: 0; font-size: 16px;">{senderName}</p>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <strong style="color: #8B5CF6; display: block; margin-bottom: 5px;">Email:</strong>
+        <p style="margin: 0;">
+          <a href="mailto:{senderEmail}" style="color: #8B5CF6; text-decoration: none;">{senderEmail}</a>
+        </p>
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <strong style="color: #8B5CF6; display: block; margin-bottom: 5px;">Message:</strong>
+        <p style="margin: 0; white-space: pre-wrap; background-color: #f5f5f5; padding: 15px; border-radius: 4px;">{message}</p>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="mailto:{senderEmail}" style="background-color: #8B5CF6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Reply to {senderName}</a>
+    </div>
+    
+    <p style="color: #666; font-size: 0.9em; margin-top: 30px;">
+      This is an automated notification from your portfolio contact form.
+    </p>
+  </div>
+  <div style="text-align: center; margin-top: 20px; color: #888; font-size: 0.8em;">
+    <p>This is an automated message, please do not reply to this email.</p>
+  </div>
+</body>
+</html>
+`;

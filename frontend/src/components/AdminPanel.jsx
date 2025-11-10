@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { StarBackground } from './StarBackground';
 import { ThemeToggle } from './ThemeToggle';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Plus, Trash2, Edit3, User, Mail, Phone, MapPin, Github, Linkedin, Instagram, Twitter, ExternalLink, Code, Briefcase } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Edit3, User, Mail, Phone, MapPin, Github, Linkedin, Instagram, Twitter, ExternalLink, Code, Briefcase, MessageSquare } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const AdminPanel = () => {
   const navigate = useNavigate();
@@ -59,27 +61,88 @@ export const AdminPanel = () => {
     }
   ]);
 
-  const [skillsData, setSkillsData] = useState([
-    { name: "HTML/CSS", level: 95, category: "frontend" },
-    { name: "JavaScript", level: 90, category: "frontend" },
-    { name: "React", level: 90, category: "frontend" },
-    { name: "Node.js", level: 80, category: "backend" },
-    { name: "Express", level: 75, category: "backend" },
-    { name: "MongoDB", level: 70, category: "backend" },
-    { name: "Git/GitHub", level: 90, category: "tools" },
-    { name: "VS Code", level: 95, category: "tools" }
-  ]);
+  const [skillsData, setSkillsData] = useState([]);
 
   const [activeTab, setActiveTab] = useState('about');
   const [isEditing, setIsEditing] = useState(false);
+  
+  // State for messages
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState('');
 
-  const handleSave = () => {
-    // Here you would typically save to your backend
-    console.log('Saving data:', { aboutData, contactData, projectsData, skillsData });
-    setIsEditing(false);
-    // Show success message
-    alert('Data saved successfully!');
+  // Fetch contact info
+  const fetchContactInfo = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/contactInfo`);
+      if (response.ok) {
+        const data = await response.json();
+        setContactData({
+          email: data.email || "",
+          phone1: data.phone1 || "",
+          phone2: data.phone2 || "",
+          location1: data.location1 || "",
+          location2: data.location2 || "",
+          socialLinks: {
+            linkedin: data.socialLinks?.linkedin || "",
+            instagram: data.socialLinks?.instagram || "",
+            twitter: data.socialLinks?.twitter || "",
+            github: data.socialLinks?.github || ""
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching contact info:', error);
+    }
   };
+
+  // Save contact info
+  const saveContactInfo = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/contactInfo`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save contact info');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error saving contact info:', error);
+      alert('Failed to save contact information. Please try again.');
+      return false;
+    }
+  };
+
+  const handleSave = async () => {
+    // Save contact info to backend
+    const contactSaved = await saveContactInfo();
+    
+    if (contactSaved) {
+      console.log('Saving other data:', { aboutData, projectsData, skillsData });
+      setIsEditing(false);
+      alert('Data saved successfully!');
+    }
+  };
+
+  // Load contact info when contact tab is active
+  useEffect(() => {
+    if (activeTab === 'contact') {
+      fetchContactInfo();
+    }
+  }, [activeTab]);
+
+  // Load skills when skills tab is active
+  useEffect(() => {
+    if (activeTab === 'skills') {
+      fetchSkills();
+    }
+  }, [activeTab]);
 
   const addNewProject = () => {
     const newProject = {
@@ -100,18 +163,78 @@ export const AdminPanel = () => {
     }
   };
 
-  const addNewSkill = () => {
+  // Fetch skills from backend
+  const fetchSkills = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/skills`);
+      if (response.ok) {
+        const data = await response.json();
+        // Transform backend data structure to frontend format
+        const transformedSkills = data.map(item => ({
+          _id: item._id,
+          name: item.skill?.name || "",
+          level: item.skill?.level || 0,
+          category: item.skill?.category || "frontend"
+        }));
+        setSkillsData(transformedSkills);
+      }
+    } catch (error) {
+      console.error('Error fetching skills:', error);
+    }
+  };
+
+  const addNewSkill = async () => {
     const newSkill = {
       name: "New Technology",
       level: 75,
       category: "frontend"
     };
-    setSkillsData([...skillsData, newSkill]);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/skills`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newSkill),
+      });
+
+      if (response.ok) {
+        const created = await response.json();
+        const transformedSkill = {
+          _id: created._id,
+          name: created.skill?.name || newSkill.name,
+          level: created.skill?.level || newSkill.level,
+          category: created.skill?.category || newSkill.category
+        };
+        setSkillsData([...skillsData, transformedSkill]);
+      } else {
+        alert('Failed to create skill. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating skill:', error);
+      alert('Failed to create skill. Please try again.');
+    }
   };
 
-  const removeSkill = (index) => {
-    if (window.confirm('Are you sure you want to delete this skill?')) {
-      setSkillsData(skillsData.filter((_, i) => i !== index));
+  const removeSkill = async (skillId) => {
+    if (!window.confirm('Are you sure you want to delete this skill?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/skills/${skillId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setSkillsData(skillsData.filter(skill => skill._id !== skillId));
+      } else {
+        alert('Failed to delete skill. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting skill:', error);
+      alert('Failed to delete skill. Please try again.');
     }
   };
 
@@ -137,18 +260,124 @@ export const AdminPanel = () => {
     ));
   };
 
-  const updateSkill = (index, field, value) => {
-    setSkillsData(skillsData.map((skill, i) => 
-      i === index ? { ...skill, [field]: value } : skill
-    ));
+  const updateSkill = async (index, field, value) => {
+    const skill = skillsData[index];
+    if (!skill._id) {
+      // If no ID, just update locally (for new skills not yet saved)
+      setSkillsData(skillsData.map((s, i) => 
+        i === index ? { ...s, [field]: value } : s
+      ));
+      return;
+    }
+
+    // Update locally first for immediate UI feedback
+    const updatedSkills = skillsData.map((s, i) => 
+      i === index ? { ...s, [field]: value } : s
+    );
+    setSkillsData(updatedSkills);
+
+    // Update in backend
+    try {
+      const updatedSkill = updatedSkills[index];
+      const response = await fetch(`${API_BASE_URL}/skills/${skill._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: updatedSkill.name,
+          level: updatedSkill.level,
+          category: updatedSkill.category
+        }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setSkillsData(skillsData);
+        throw new Error('Failed to update skill');
+      }
+    } catch (error) {
+      console.error('Error updating skill:', error);
+      // Revert on error
+      setSkillsData(skillsData);
+      alert('Failed to update skill. Please try again.');
+    }
   };
 
   const tabs = [
     { id: 'about', label: 'About Me', icon: User },
     { id: 'contact', label: 'Contact Info', icon: Mail },
     { id: 'projects', label: 'Projects', icon: ExternalLink },
-    { id: 'skills', label: 'Skills', icon: Code }
+    { id: 'skills', label: 'Skills', icon: Code },
+    { id: 'messages', label: 'Messages', icon: MessageSquare }
   ];
+
+  // Fetch functions for GetInTouch messages
+  const fetchMessages = async () => {
+    setMessagesLoading(true);
+    setMessagesError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/getInTouch`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      const data = await response.json();
+      setMessages(data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setMessagesError(error.message || 'Failed to load messages');
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const deleteMessage = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this message?')) {
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/getInTouch/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete message');
+      }
+      // Refresh messages list
+      await fetchMessages();
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      alert('Failed to delete message. Please try again.');
+    }
+  };
+
+  const updateMessage = async (id, updatedData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/getInTouch/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update message');
+      }
+      const updatedMessage = await response.json();
+      setMessages(messages.map(msg => msg._id === id ? updatedMessage : msg));
+      return updatedMessage;
+    } catch (error) {
+      console.error('Error updating message:', error);
+      alert('Failed to update message. Please try again.');
+      throw error;
+    }
+  };
+
+  // Load messages when messages tab is active
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      fetchMessages();
+    }
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
@@ -600,6 +829,91 @@ export const AdminPanel = () => {
             </div>
           )}
 
+          {/* Messages Tab */}
+          {activeTab === 'messages' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-semibold mb-2">Contact Messages</h3>
+                  <p className="text-muted-foreground">View and manage messages from your contact form</p>
+                </div>
+                <button
+                  onClick={fetchMessages}
+                  disabled={messagesLoading}
+                  className={cn(
+                    "px-4 py-2 rounded-lg border transition-colors flex items-center gap-2",
+                    "bg-background/50 backdrop-blur-sm border-white/20",
+                    "hover:bg-white/10 disabled:opacity-50"
+                  )}
+                >
+                  <Mail size={16} />
+                  {messagesLoading ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+
+              {messagesError && (
+                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                  <p>{messagesError}</p>
+                </div>
+              )}
+
+              {messagesLoading && messages.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Loading messages...</p>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <p className="text-muted-foreground">No messages yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message._id}
+                      className="bg-card/50 backdrop-blur-md rounded-xl p-6 border border-white/10"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="text-lg font-semibold">{message.name}</h4>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(message.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <a
+                            href={`mailto:${message.email}`}
+                            className="text-primary hover:text-primary/80 transition-colors text-sm"
+                          >
+                            {message.email}
+                          </a>
+                        </div>
+                        {isEditing && (
+                          <button
+                            onClick={() => deleteMessage(message._id)}
+                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="mt-4">
+                        <p className="text-foreground/90 whitespace-pre-wrap">{message.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Skills Tab */}
           {activeTab === 'skills' && (
             <div className="space-y-6">
@@ -621,12 +935,12 @@ export const AdminPanel = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {skillsData.map((skill, index) => (
-                  <div key={index} className="bg-card/50 backdrop-blur-md rounded-xl p-4 border border-white/10">
+                  <div key={skill._id || index} className="bg-card/50 backdrop-blur-md rounded-xl p-4 border border-white/10">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-semibold">{skill.name}</h4>
                       {isEditing && (
                         <button
-                          onClick={() => removeSkill(index)}
+                          onClick={() => removeSkill(skill._id)}
                           className="p-1 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
                         >
                           <Trash2 size={14} />

@@ -1,33 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {cn} from '@/lib/utils';
 
-
-const skills = [
-    // Frontend
-  { name: "HTML/CSS", level: 95, category: "frontend" },
-  { name: "JavaScript", level: 90, category: "frontend" },
-  { name: "React", level: 90, category: "frontend" },
-  
-
-  // Backend
-  { name: "Node.js", level: 80, category: "backend" },
-  { name: "Express", level: 75, category: "backend" },
-  { name: "MongoDB", level: 70, category: "backend" },
-  
-
-  // Tools
-  { name: "Git/GitHub", level: 90, category: "tools" },
-  { name: "VS Code", level: 95, category: "tools" },
-];
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const categories =["All", "backend", "frontend", "tools"];
 
 export const SkillsSection = () =>{
+    const [skills, setSkills] = useState([]);
+    const [activeCategory, setActiveCategory] = useState("All");
 
-    const[activeCategory, setActiveCategory] = useState("All")
+    // Fetch skills from backend
+    useEffect(() => {
+        const fetchSkills = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/skills`);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Transform backend data structure to frontend format
+                    const transformedSkills = data.map(item => ({
+                        name: item.skill?.name || "",
+                        level: item.skill?.level || 0,
+                        category: item.skill?.category || "frontend"
+                    }));
+                    setSkills(transformedSkills);
+                }
+            } catch (error) {
+                console.error('Error fetching skills:', error);
+            }
+        };
+
+        fetchSkills();
+    }, []);
 
     const filteredSkills = skills.filter(
-        (skills) => activeCategory === "All" || skills.category === activeCategory
+        (skill) => activeCategory === "All" || skill.category === activeCategory
     );
 
     return(
@@ -51,17 +57,17 @@ export const SkillsSection = () =>{
                 </div> 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredSkills.map((skills, key) =>(
+                    {filteredSkills.map((skill, key) =>(
                         <div key={key} className="bg-card p-6 rounded-lg shadow-xs card-hover">
                             <div className="text-left mb-4">
-                                <h3 className="font-semibold text-lg">{skills.name}</h3>
+                                <h3 className="font-semibold text-lg">{skill.name}</h3>
                             </div> 
                             <div className="w-full bg-secondary/50 h-2 rounded-full overflow-hidden">
 
                             </div>
-                            <div className="bg-primary h-2 rounded-full origin-left animate-[grow_1.5s_ease-out" style={{width: skills.level +"%"}}/>
+                            <div className="bg-primary h-2 rounded-full origin-left animate-[grow_1.5s_ease-out" style={{width: skill.level +"%"}}/>
                             <div className="text-right mt-1">
-                                <span className="text-sm text-muted-foreground">{skills.level}%</span>
+                                <span className="text-sm text-muted-foreground">{skill.level}%</span>
                             </div>    
                         </div>    
                     )) }

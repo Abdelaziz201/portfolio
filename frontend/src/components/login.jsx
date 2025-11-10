@@ -127,12 +127,12 @@ export const Login = () => {
 
             {/* Additional Options */}
             <div className="mt-6 text-center space-y-4">
-              <a 
-                href="#" 
+              <button
+                onClick={() => navigate('/reset-password')}
                 className="text-sm text-primary hover:text-primary/80 transition-colors duration-300"
               >
                 Forgot your password?
-              </a>
+              </button>
               
               <div className="text-sm text-foreground/70">
                 Don't have an account?{' '}

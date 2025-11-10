@@ -17,8 +17,9 @@ export const getSkills = asyncHandler(async (req, res) => {
 //create skills
 export const createSkills = asyncHandler(async (req, res) => {
     try {
-        const { skill } = req.body;
-        const skills = await Skills.create({ skill });
+        // Handle both nested { skill: {...} } and flat { name, level, category } structures
+        const skillData = req.body.skill || req.body;
+        const skills = await Skills.create({ skill: skillData });
         res.status(201).json(skills);
    } catch (error) {
     res.status(500).json({ message: error.message });
@@ -30,8 +31,12 @@ export const createSkills = asyncHandler(async (req, res) => {
 export const updateSkills = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const { skill } = req.body;
-        const skills = await Skills.findByIdAndUpdate(id, { skill }, { new: true });
+        // Handle both nested { skill: {...} } and flat { name, level, category } structures
+        const skillData = req.body.skill || req.body;
+        const skills = await Skills.findByIdAndUpdate(id, { skill: skillData }, { new: true });
+        if (!skills) {
+            return res.status(404).json({ message: "Skill not found" });
+        }
         res.status(200).json(skills);
    } catch (error) {
     res.status(500).json({ message: error.message });
@@ -42,8 +47,11 @@ export const updateSkills = asyncHandler(async (req, res) => {
 export const deleteSkills = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        await Skills.findByIdAndDelete(id);
-        res.status(200).json({ message: "Skills deleted successfully" });
+        const deleted = await Skills.findByIdAndDelete(id);
+        if (!deleted) {
+            return res.status(404).json({ message: "Skill not found" });
+        }
+        res.status(200).json({ message: "Skill deleted successfully" });
    } catch (error) {
     res.status(500).json({ message: error.message });
    }
