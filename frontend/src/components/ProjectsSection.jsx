@@ -100,27 +100,96 @@
 // };
 
 import { ExternalLink, Github, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 
-const projects = [
-  {
-    id: 1,
-    title: "Event Management System",
-    description: "An event management website for companies that organize venues with booking capabilities and admin dashboard",
-    images: [
-      "projects/bokd1.png",
-      "projects/bokd2.png"
-    ],
-    tags: ["React.js", "Node.js", "MongoDB", "Express"],
-    githubUrl: "https://github.com/Abdelaziz201/bokd",
-    demoUrl: "https://bokd.onrender.com/"
-  }
-];
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const ProjectsSection = () => {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
+
+  // Fetch projects from backend
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/projects`);
+        if (response.ok) {
+          const data = await response.json();
+          setProjects(data);
+          if (data.length > 0) {
+            setCurrentImageIndex(0);
+            setCurrentProjectIndex(0);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
+
+  // Helper function to get image URL
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return '';
+    // If it's already a full URL (http/https), return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    // If it starts with /api/photos, prepend the base URL
+    if (imagePath.startsWith('/api/photos/')) {
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      return `${baseUrl}${imagePath}`;
+    }
+    // If it's a relative path, assume it's from public folder
+    return imagePath;
+  };
+
+  // Get current project
+  const currentProject = projects[currentProjectIndex];
+
+  if (loading) {
+    return (
+      <section id="projects" className="py-20 px-4 relative bg-gradient-to-b from-background to-muted/5">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">Loading projects...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!currentProject || projects.length === 0) {
+    return (
+      <section id="projects" className="py-20 px-4 relative bg-gradient-to-b from-background to-muted/5">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Featured <span className="text-primary">Projects</span>
+            </h2>
+            <div className="w-24 h-1 bg-primary mx-auto mb-4"></div>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Here are my recent projects, carefully crafted with attention to detail, 
+              performance, and user experience.
+            </p>
+          </div>
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">No projects available yet.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const currentImages = currentProject.images || [];
+  const currentImageUrl = currentImages[currentImageIndex] ? getImageUrl(currentImages[currentImageIndex]) : '';
 
   return (
     <section id="projects" className="py-20 px-4 relative bg-gradient-to-b from-background to-muted/5">
@@ -137,6 +206,28 @@ export const ProjectsSection = () => {
           </p>
         </div>
 
+        {/* Project Navigation - Show if multiple projects */}
+        {projects.length > 1 && (
+          <div className="flex justify-center gap-2 mb-8">
+            {projects.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setCurrentProjectIndex(index);
+                  setCurrentImageIndex(0);
+                }}
+                className={`px-4 py-2 rounded-full transition-colors ${
+                  index === currentProjectIndex
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted hover:bg-muted/80'
+                }`}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Main Project Card - Perfectly symmetrical */}
         <div className="bg-card rounded-2xl shadow-2xl border overflow-hidden mx-auto max-w-4xl">
           {/* Project Content Grid - Symmetrical by design */}
@@ -144,33 +235,40 @@ export const ProjectsSection = () => {
             {/* Image Section - Left side */}
             <div className="relative group">
               <div className="aspect-video bg-muted/10 flex items-center justify-center p-4">
-                <img
-                  src={projects[0].images[currentImageIndex]}
-                  alt={`${projects[0].title} screenshot`}
-                  className="w-full h-full object-contain rounded-lg cursor-pointer transition-transform duration-500 group-hover:scale-105"
-                  onClick={() => setSelectedImage(projects[0].images[currentImageIndex])}
-                />
+                {currentImageUrl ? (
+                  <img
+                    src={currentImageUrl}
+                    alt={`${currentProject.title} screenshot`}
+                    className="w-full h-full object-contain rounded-lg cursor-pointer transition-transform duration-500 group-hover:scale-105"
+                    onClick={() => setSelectedImage(currentImageUrl)}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="text-muted-foreground">No image available</div>
+                )}
                 
                 {/* Navigation Arrows */}
-                {projects[0].images.length > 1 && (
+                {currentImages.length > 1 && (
                   <>
                     <button 
-                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/90 p-2 rounded-full hover:bg-background transition-colors shadow-md"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-background/90 p-2 rounded-full hover:bg-background transition-colors shadow-md z-10"
                       onClick={(e) => {
                         e.stopPropagation();
                         setCurrentImageIndex((prev) => 
-                          prev === 0 ? projects[0].images.length - 1 : prev - 1
+                          prev === 0 ? currentImages.length - 1 : prev - 1
                         );
                       }}
                     >
                       <ChevronLeft size={20} />
                     </button>
                     <button 
-                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/90 p-2 rounded-full hover:bg-background transition-colors shadow-md"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-background/90 p-2 rounded-full hover:bg-background transition-colors shadow-md z-10"
                       onClick={(e) => {
                         e.stopPropagation();
                         setCurrentImageIndex((prev) => 
-                          prev === projects[0].images.length - 1 ? 0 : prev + 1
+                          prev === currentImages.length - 1 ? 0 : prev + 1
                         );
                       }}
                     >
@@ -181,9 +279,9 @@ export const ProjectsSection = () => {
               </div>
               
               {/* Image Indicators - Centered */}
-              {projects[0].images.length > 1 && (
+              {currentImages.length > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 bg-background/80 px-3 py-1.5 rounded-full">
-                  {projects[0].images.map((_, index) => (
+                  {currentImages.map((_, index) => (
                     <button
                       key={index}
                       className={`w-2 h-2 rounded-full transition-all ${
@@ -203,79 +301,87 @@ export const ProjectsSection = () => {
             {/* Details Section - Right side */}
             <div className="p-8 flex flex-col justify-center">
               <h3 className="text-2xl md:text-3xl font-bold mb-4 text-center lg:text-left">
-                {projects[0].title}
+                {currentProject.title || 'Untitled Project'}
               </h3>
               
               <p className="text-muted-foreground mb-6 text-center lg:text-left leading-relaxed">
-                {projects[0].description}
+                {currentProject.description || 'No description available.'}
               </p>
               
               {/* Tags - Centered for symmetry */}
-              <div className="flex flex-wrap gap-2 mb-6 justify-center lg:justify-start">
-                {projects[0].tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1.5 text-sm font-medium rounded-full bg-primary/10 text-primary border border-primary/20"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              {currentProject.tags && currentProject.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6 justify-center lg:justify-start">
+                  {currentProject.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1.5 text-sm font-medium rounded-full bg-primary/10 text-primary border border-primary/20"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
               
               {/* Buttons - Centered for symmetry */}
               <div className="flex gap-4 justify-center lg:justify-start">
-                <a 
-                  href={projects[0].demoUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors shadow-md"
-                >
-                  <ExternalLink size={16} />
-                  Live Demo
-                </a>
-                <a 
-                  href={projects[0].githubUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-5 py-2.5 border rounded-full font-medium hover:bg-accent transition-colors"
-                >
-                  <Github size={16} />
-                  View Code
-                </a>
+                {currentProject.demoUrl && (
+                  <a 
+                    href={currentProject.demoUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors shadow-md"
+                  >
+                    <ExternalLink size={16} />
+                    Live Demo
+                  </a>
+                )}
+                {currentProject.githubUrl && (
+                  <a 
+                    href={currentProject.githubUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2.5 border rounded-full font-medium hover:bg-accent transition-colors"
+                  >
+                    <Github size={16} />
+                    View Code
+                  </a>
+                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* Coming Soon Section - Perfectly centered */}
-        <div className="mt-16 text-center">
-          <div className="inline-flex items-center justify-center w-full">
-            <hr className="w-64 h-0.5 my-8 bg-border border-0 rounded" />
-            <span className="absolute px-3 font-medium text-muted-foreground -translate-x-1/2 bg-background left-1/2">
-              More Coming Soon
-            </span>
+        {projects.length <= 1 && (
+          <div className="mt-16 text-center">
+            <div className="inline-flex items-center justify-center w-full">
+              <hr className="w-64 h-0.5 my-8 bg-border border-0 rounded" />
+              <span className="absolute px-3 font-medium text-muted-foreground -translate-x-1/2 bg-background left-1/2">
+                More Coming Soon
+              </span>
+            </div>
+            
+            <div className="flex justify-center gap-2 mt-4">
+              {[1, 2, 3].map((i) => (
+                <div 
+                  key={i} 
+                  className="w-3 h-3 rounded-full bg-muted animate-pulse"
+                  style={{ animationDelay: `${i * 0.2}s` }}
+                ></div>
+              ))}
+            </div>
           </div>
-          
-          <div className="flex justify-center gap-2 mt-4">
-            {[1, 2, 3].map((i) => (
-              <div 
-                key={i} 
-                className="w-3 h-3 rounded-full bg-muted animate-pulse"
-                style={{ animationDelay: `${i * 0.2}s` }}
-              ></div>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Enhanced Image Preview Modal - Much Larger */}
-      {selectedImage && (
+      {selectedImage && currentProject && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4">
           <div className="relative w-full h-full flex items-center justify-center">
             <div className="relative max-w-6xl w-full max-h-[90vh] bg-background rounded-xl overflow-hidden shadow-2xl flex flex-col">
               {/* Header with title and close button */}
               <div className="flex justify-between items-center p-4 border-b">
-                <h3 className="text-lg font-semibold">{projects[0].title} - Preview</h3>
+                <h3 className="text-lg font-semibold">{currentProject.title} - Preview</h3>
                 <button 
                   className="p-2 rounded-full hover:bg-muted transition-colors"
                   onClick={() => setSelectedImage(null)}
@@ -290,20 +396,25 @@ export const ProjectsSection = () => {
                   src={selectedImage}
                   alt="Full Preview"
                   className="max-w-full max-h-full object-contain rounded-lg"
+                  onError={(e) => {
+                    e.target.src = '';
+                    e.target.alt = 'Image failed to load';
+                  }}
                 />
               </div>
               
               {/* Navigation controls for modal */}
-              {projects[0].images.length > 1 && (
+              {currentImages.length > 1 && (
                 <div className="p-4 border-t flex justify-center gap-4">
                   <button 
                     className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                     onClick={() => {
                       const newIndex = currentImageIndex === 0 
-                        ? projects[0].images.length - 1 
+                        ? currentImages.length - 1 
                         : currentImageIndex - 1;
                       setCurrentImageIndex(newIndex);
-                      setSelectedImage(projects[0].images[newIndex]);
+                      const newImageUrl = getImageUrl(currentImages[newIndex]);
+                      setSelectedImage(newImageUrl);
                     }}
                   >
                     <ChevronLeft size={20} />
@@ -311,7 +422,7 @@ export const ProjectsSection = () => {
                   </button>
                   
                   <div className="flex items-center gap-2">
-                    {projects[0].images.map((_, index) => (
+                    {currentImages.map((_, index) => (
                       <button
                         key={index}
                         className={`w-3 h-3 rounded-full transition-all ${
@@ -319,7 +430,8 @@ export const ProjectsSection = () => {
                         }`}
                         onClick={() => {
                           setCurrentImageIndex(index);
-                          setSelectedImage(projects[0].images[index]);
+                          const newImageUrl = getImageUrl(currentImages[index]);
+                          setSelectedImage(newImageUrl);
                         }}
                         aria-label={`View image ${index + 1}`}
                       />
@@ -329,11 +441,12 @@ export const ProjectsSection = () => {
                   <button 
                     className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                     onClick={() => {
-                      const newIndex = currentImageIndex === projects[0].images.length - 1 
+                      const newIndex = currentImageIndex === currentImages.length - 1 
                         ? 0 
                         : currentImageIndex + 1;
                       setCurrentImageIndex(newIndex);
-                      setSelectedImage(projects[0].images[newIndex]);
+                      const newImageUrl = getImageUrl(currentImages[newIndex]);
+                      setSelectedImage(newImageUrl);
                     }}
                   >
                     Next

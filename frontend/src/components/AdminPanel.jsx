@@ -49,17 +49,8 @@ export const AdminPanel = () => {
     }
   });
 
-  const [projectsData, setProjectsData] = useState([
-    {
-      id: 1,
-      title: "Event Management System",
-      description: "An event management website for companies that organize venues with booking capabilities and admin dashboard",
-      images: ["projects/bokd1.png", "projects/bokd2.png"],
-      tags: ["React.js", "Node.js", "MongoDB", "Express"],
-      githubUrl: "https://github.com/Abdelaziz201/bokd",
-      demoUrl: "https://bokd.onrender.com/"
-    }
-  ]);
+  const [projectsData, setProjectsData] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
 
   const [skillsData, setSkillsData] = useState([]);
 
@@ -124,7 +115,7 @@ export const AdminPanel = () => {
     const contactSaved = await saveContactInfo();
     
     if (contactSaved) {
-      console.log('Saving other data:', { aboutData, projectsData, skillsData });
+      // Projects are saved individually when updated, so we just show success
       setIsEditing(false);
       alert('Data saved successfully!');
     }
@@ -144,22 +135,99 @@ export const AdminPanel = () => {
     }
   }, [activeTab]);
 
-  const addNewProject = () => {
+  // Load projects when projects tab is active
+  useEffect(() => {
+    if (activeTab === 'projects') {
+      fetchProjects();
+    }
+  }, [activeTab]);
+
+  // Fetch projects from backend
+  const fetchProjects = async () => {
+    setProjectsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects`);
+      if (response.ok) {
+        const data = await response.json();
+        // Transform backend data to frontend format
+        const transformedProjects = data.map(project => ({
+          _id: project._id,
+          id: project._id, // Keep both for compatibility
+          title: project.title || "",
+          description: project.description || "",
+          images: project.images || [],
+          tags: project.tags || [],
+          githubUrl: project.githubUrl || "",
+          demoUrl: project.demoUrl || ""
+        }));
+        setProjectsData(transformedProjects);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setProjectsLoading(false);
+    }
+  };
+
+  const addNewProject = async () => {
     const newProject = {
-      id: Date.now(),
       title: "New Project",
       description: "A new project description. Describe what this project does, the technologies used, and its key features.",
-      images: ["projects/placeholder.png"],
+      images: [],
       tags: ["React", "Node.js"],
       githubUrl: "https://github.com/yourusername/project-name",
       demoUrl: "https://your-project-demo.com"
     };
-    setProjectsData([...projectsData, newProject]);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newProject),
+      });
+
+      if (response.ok) {
+        const created = await response.json();
+        const transformedProject = {
+          _id: created._id,
+          id: created._id,
+          title: created.title || "",
+          description: created.description || "",
+          images: created.images || [],
+          tags: created.tags || [],
+          githubUrl: created.githubUrl || "",
+          demoUrl: created.demoUrl || ""
+        };
+        setProjectsData([...projectsData, transformedProject]);
+      } else {
+        alert('Failed to create project. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+      alert('Failed to create project. Please try again.');
+    }
   };
 
-  const removeProject = (id) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      setProjectsData(projectsData.filter(project => project.id !== id));
+  const removeProject = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setProjectsData(projectsData.filter(project => project._id !== id && project.id !== id));
+      } else {
+        alert('Failed to delete project. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Failed to delete project. Please try again.');
     }
   };
 
@@ -238,26 +306,177 @@ export const AdminPanel = () => {
     }
   };
 
-  const updateProject = (id, field, value) => {
-    setProjectsData(projectsData.map(project => 
-      project.id === id ? { ...project, [field]: value } : project
-    ));
+  const updateProject = async (id, field, value) => {
+    // Update locally first for immediate UI feedback
+    const updatedProjects = projectsData.map(project => 
+      (project._id === id || project.id === id) ? { ...project, [field]: value } : project
+    );
+    setProjectsData(updatedProjects);
+
+    // Find the project to update
+    const project = updatedProjects.find(p => p._id === id || p.id === id);
+    if (!project || !project._id) {
+      return; // New project not yet saved
+    }
+
+    // Update in backend
+    try {
+      const updateData = {
+        title: project.title,
+        description: project.description,
+        tags: project.tags,
+        githubUrl: project.githubUrl,
+        demoUrl: project.demoUrl,
+        images: project.images
+      };
+
+      const response = await fetch(`${API_BASE_URL}/projects/${project._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setProjectsData(projectsData);
+        throw new Error('Failed to update project');
+      }
+    } catch (error) {
+      console.error('Error updating project:', error);
+      // Revert on error
+      setProjectsData(projectsData);
+      alert('Failed to update project. Please try again.');
+    }
   };
 
-  const addProjectImage = (projectId, imageUrl) => {
-    setProjectsData(projectsData.map(project => 
-      project.id === projectId 
-        ? { ...project, images: [...project.images, imageUrl] }
-        : project
-    ));
+  const uploadProjectImage = async (projectId, file) => {
+    try {
+      const formData = new FormData();
+      formData.append('images', file);
+
+      const response = await fetch(`${API_BASE_URL}/projects/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.images && data.images.length > 0) {
+          const imageUrl = data.images[0].url;
+          
+          // Find the project
+          const project = projectsData.find(p => p._id === projectId || p.id === projectId);
+          if (!project) return;
+
+          // Add image to project
+          const updatedImages = [...(project.images || []), imageUrl];
+          
+          // Update project with new image
+          if (project._id) {
+            const updateData = {
+              title: project.title,
+              description: project.description,
+              tags: project.tags,
+              githubUrl: project.githubUrl,
+              demoUrl: project.demoUrl,
+              images: updatedImages
+            };
+
+            const updateResponse = await fetch(`${API_BASE_URL}/projects/${project._id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(updateData),
+            });
+
+            if (updateResponse.ok) {
+              setProjectsData(projectsData.map(p => 
+                (p._id === projectId || p.id === projectId) 
+                  ? { ...p, images: updatedImages }
+                  : p
+              ));
+            } else {
+              alert('Failed to save image to project.');
+            }
+          } else {
+            // New project, just update locally
+            setProjectsData(projectsData.map(p => 
+              (p.id === projectId) 
+                ? { ...p, images: updatedImages }
+                : p
+            ));
+          }
+        }
+      } else {
+        alert('Failed to upload image. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    }
   };
 
-  const removeProjectImage = (projectId, imageIndex) => {
-    setProjectsData(projectsData.map(project => 
-      project.id === projectId 
-        ? { ...project, images: project.images.filter((_, index) => index !== imageIndex) }
-        : project
+  const removeProjectImage = async (projectId, imageIndex) => {
+    const project = projectsData.find(p => p._id === projectId || p.id === projectId);
+    if (!project) return;
+
+    const imageUrl = project.images[imageIndex];
+    const updatedImages = project.images.filter((_, index) => index !== imageIndex);
+
+    // Update locally first
+    setProjectsData(projectsData.map(p => 
+      (p._id === projectId || p.id === projectId) 
+        ? { ...p, images: updatedImages }
+        : p
     ));
+
+    // If it's a server image, try to delete it
+    if (imageUrl && imageUrl.startsWith('/api/photos/')) {
+      const filename = imageUrl.split('/').pop();
+      try {
+        await fetch(`${API_BASE_URL}/projects/images/${filename}`, {
+          method: 'DELETE',
+        });
+      } catch (error) {
+        console.error('Error deleting image file:', error);
+      }
+    }
+
+    // Update project in backend
+    if (project._id) {
+      try {
+        const updateData = {
+          title: project.title,
+          description: project.description,
+          tags: project.tags,
+          githubUrl: project.githubUrl,
+          demoUrl: project.demoUrl,
+          images: updatedImages
+        };
+
+        const response = await fetch(`${API_BASE_URL}/projects/${project._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          // Revert on error
+          setProjectsData(projectsData);
+          alert('Failed to remove image. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error updating project:', error);
+        // Revert on error
+        setProjectsData(projectsData);
+        alert('Failed to remove image. Please try again.');
+      }
+    }
   };
 
   const updateSkill = async (index, field, value) => {
@@ -700,25 +919,47 @@ export const AdminPanel = () => {
                   <h3 className="text-2xl font-semibold mb-2">Projects Management</h3>
                   <p className="text-muted-foreground">Manage your portfolio projects</p>
                 </div>
-                {isEditing && (
+                <div className="flex gap-2">
                   <button
-                    onClick={addNewProject}
-                    className="cosmic-button flex items-center gap-2"
+                    onClick={fetchProjects}
+                    disabled={projectsLoading}
+                    className={cn(
+                      "px-4 py-2 rounded-lg border transition-colors flex items-center gap-2",
+                      "bg-background/50 backdrop-blur-sm border-white/20",
+                      "hover:bg-white/10 disabled:opacity-50"
+                    )}
                   >
-                    <Plus size={16} />
-                    Add New Project
+                    {projectsLoading ? 'Loading...' : 'Refresh'}
                   </button>
-                )}
+                  {isEditing && (
+                    <button
+                      onClick={addNewProject}
+                      className="cosmic-button flex items-center gap-2"
+                    >
+                      <Plus size={16} />
+                      Add New Project
+                    </button>
+                  )}
+                </div>
               </div>
-              
-              <div className="space-y-4">
-                {projectsData.map((project) => (
+
+              {projectsLoading && projectsData.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Loading projects...</p>
+                </div>
+              ) : projectsData.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No projects yet. Add your first project!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {projectsData.map((project) => (
                   <div key={project.id} className="bg-card/50 backdrop-blur-md rounded-xl p-6 border border-white/10">
                     <div className="flex justify-between items-start mb-4">
                       <h4 className="text-lg font-semibold">{project.title}</h4>
                       {isEditing && (
                         <button
-                          onClick={() => removeProject(project.id)}
+                          onClick={() => removeProject(project._id || project.id)}
                           className="p-2 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
                         >
                           <Trash2 size={16} />
@@ -732,7 +973,7 @@ export const AdminPanel = () => {
                         <input
                           type="text"
                           value={project.title}
-                          onChange={(e) => updateProject(project.id, 'title', e.target.value)}
+                          onChange={(e) => updateProject(project._id || project.id, 'title', e.target.value)}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                         />
@@ -743,7 +984,7 @@ export const AdminPanel = () => {
                         <input
                           type="url"
                           value={project.demoUrl}
-                          onChange={(e) => updateProject(project.id, 'demoUrl', e.target.value)}
+                          onChange={(e) => updateProject(project._id || project.id, 'demoUrl', e.target.value)}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                         />
@@ -753,7 +994,7 @@ export const AdminPanel = () => {
                         <label className="block text-sm font-medium mb-2">Description</label>
                         <textarea
                           value={project.description}
-                          onChange={(e) => updateProject(project.id, 'description', e.target.value)}
+                          onChange={(e) => updateProject(project._id || project.id, 'description', e.target.value)}
                           disabled={!isEditing}
                           rows={3}
                           className="w-full px-4 py-3 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
@@ -765,7 +1006,7 @@ export const AdminPanel = () => {
                         <input
                           type="url"
                           value={project.githubUrl}
-                          onChange={(e) => updateProject(project.id, 'githubUrl', e.target.value)}
+                          onChange={(e) => updateProject(project._id || project.id, 'githubUrl', e.target.value)}
                           disabled={!isEditing}
                           className="w-full px-4 py-3 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                         />
@@ -775,12 +1016,29 @@ export const AdminPanel = () => {
                         <label className="block text-sm font-medium mb-2">Tags (comma separated)</label>
                         <input
                           type="text"
-                          value={project.tags.join(', ')}
-                          onChange={(e) => updateProject(project.id, 'tags', e.target.value.split(', ').filter(tag => tag.trim()))}
+                          value={Array.isArray(project.tags) ? project.tags.join(', ') : (project.tags || '')}
+                          onChange={(e) => {
+                            // Update locally immediately for smooth typing
+                            const updatedProjects = projectsData.map(p => 
+                              (p._id === project._id || p.id === project.id) 
+                                ? { ...p, tags: e.target.value } 
+                                : p
+                            );
+                            setProjectsData(updatedProjects);
+                          }}
+                          onBlur={(e) => {
+                            // Process tags when user finishes editing (on blur)
+                            const processedTags = e.target.value
+                              .split(',')
+                              .map(tag => tag.trim())
+                              .filter(tag => tag);
+                            updateProject(project._id || project.id, 'tags', processedTags);
+                          }}
                           disabled={!isEditing}
                           placeholder="React.js, Node.js, MongoDB"
                           className="w-full px-4 py-3 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">Type tags separated by commas (e.g., React.js, Node.js, MongoDB)</p>
                       </div>
                     </div>
                     
@@ -788,23 +1046,35 @@ export const AdminPanel = () => {
                     <div className="mt-6">
                       <label className="block text-sm font-medium mb-3">Project Images</label>
                       <div className="space-y-3">
-                        {project.images.map((image, imageIndex) => (
+                        {project.images && project.images.map((image, imageIndex) => (
                           <div key={imageIndex} className="flex items-center gap-3 p-3 border border-white/10 rounded-lg">
-                            <input
-                              type="text"
-                              value={image}
-                              onChange={(e) => {
-                                const newImages = [...project.images];
-                                newImages[imageIndex] = e.target.value;
-                                updateProject(project.id, 'images', newImages);
-                              }}
-                              disabled={!isEditing}
-                              placeholder="projects/image.png"
-                              className="flex-1 px-3 py-2 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 text-sm"
-                            />
+                            <div className="flex-1 flex items-center gap-3">
+                              {image && (
+                                <img 
+                                  src={image.startsWith('http') || image.startsWith('/') ? image : `${API_BASE_URL.replace('/api', '')}${image}`}
+                                  alt={`Project image ${imageIndex + 1}`}
+                                  className="w-16 h-16 object-cover rounded-lg"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <input
+                                type="text"
+                                value={image}
+                                onChange={(e) => {
+                                  const newImages = [...project.images];
+                                  newImages[imageIndex] = e.target.value;
+                                  updateProject(project._id || project.id, 'images', newImages);
+                                }}
+                                disabled={!isEditing}
+                                placeholder="Image URL or path"
+                                className="flex-1 px-3 py-2 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 text-sm"
+                              />
+                            </div>
                             {isEditing && (
                               <button
-                                onClick={() => removeProjectImage(project.id, imageIndex)}
+                                onClick={() => removeProjectImage(project._id || project.id, imageIndex)}
                                 className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                               >
                                 <Trash2 size={16} />
@@ -813,19 +1083,41 @@ export const AdminPanel = () => {
                           </div>
                         ))}
                         {isEditing && (
-                          <button
-                            onClick={() => addProjectImage(project.id, '')}
-                            className="w-full p-3 border-2 border-dashed border-primary/30 rounded-lg text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-2"
-                          >
-                            <Plus size={16} />
-                            Add Image URL
-                          </button>
+                          <>
+                            <label className="w-full p-3 border-2 border-dashed border-primary/30 rounded-lg text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                              <Plus size={16} />
+                              Upload Image
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    uploadProjectImage(project._id || project.id, file);
+                                  }
+                                  e.target.value = ''; // Reset input
+                                }}
+                              />
+                            </label>
+                            <button
+                              onClick={() => {
+                                const newImages = [...(project.images || []), ''];
+                                updateProject(project._id || project.id, 'images', newImages);
+                              }}
+                              className="w-full p-3 border-2 border-dashed border-primary/30 rounded-lg text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Plus size={16} />
+                              Add Image URL
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
