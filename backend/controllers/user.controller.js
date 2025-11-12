@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { generateTokenAndSetCookie } from "../config/generateTokenAndSetCookie.js";
 import {
     sendPasswordResetEmail,
@@ -10,24 +11,56 @@ import {
 } from "../mailtrap/emails.js";
 
 
+//verify token
+export const verifyToken = asyncHandler(async (req, res) => {
+    try {
+        const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
+        
+        if (!token) {
+            return res.status(401).json({ message: "No token provided", valid: false });
+        }
+
+        const decoded = jwt.verify(token, process.env.jwt_sECRET);
+        const user = await User.findById(decoded.userId).select('-password');
+
+        if (!user) {
+            return res.status(401).json({ message: "User not found", valid: false });
+        }
+
+        res.status(200).json({ 
+            message: "Token is valid", 
+            valid: true,
+            user: user 
+        });
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ message: "Token expired", valid: false });
+        }
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ message: "Invalid token", valid: false });
+        }
+        return res.status(500).json({ message: "Error verifying token", valid: false });
+    }
+});
+
 //read user
 export const signin = asyncHandler(async (req, res) => {
-    const { email, password } = req.body || {};
+    const { username, password } = req.body || {};
 
-    if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
+    if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ name: username });
 
     if (!user) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({ message: "Invalid username or password" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({ message: "Invalid username or password" });
     }
 
     user.lastLogin = new Date();
@@ -47,21 +80,22 @@ export const signin = asyncHandler(async (req, res) => {
 
 //create user
 export const signup = asyncHandler(async (req, res) => {
-    const {name, email, password} = req.body;
-        try{
+    try {
+        const {name, email, password} = req.body || {};
+        
         if(!email){
-            throw new Error("Email is required");
+            return res.status(400).json({ message: "Email is required" });
         }
         if(!password){
-            throw new Error("Password is required");
+            return res.status(400).json({ message: "Password is required" });
         }
         if(!name){
-            throw new Error("Name is required");
+            return res.status(400).json({ message: "Name is required" });
         }
         
         const useAlreadyExists = await User.findOne({email});
         if(useAlreadyExists){
-            throw new Error("User already exists");
+            return res.status(400).json({ message: "User already exists" });
         }
         
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -198,6 +232,19 @@ export const resetPassword = asyncHandler(async (req, res) => {
 });
 
 
+
+//logout
+export const logout = asyncHandler(async (req, res) => {
+    // Clear the token cookie
+    res.cookie("token", "", {
+        httpOnly: true,
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 0, // Expire immediately
+    });
+
+    res.status(200).json({ message: "Logged out successfully" });
+});
 
 //forgot password email
 

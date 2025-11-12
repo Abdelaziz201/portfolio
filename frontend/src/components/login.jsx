@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { StarBackground } from './StarBackground';
-import { ThemeToggle } from './ThemeToggle';
 import { useNavigate } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const Login = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleInputChange = (e) => {
@@ -17,14 +21,50 @@ export const Login = () => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login attempt:', formData);
-    // Add your login logic here
-    // For now, we'll just navigate to admin panel
-    navigate('/admin');
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store token in localStorage as backup
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        // Store user data
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        // Navigate to admin panel
+        navigate('/admin');
+      } else {
+        setError(data.message || 'Invalid username or password');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const goBack = () => {
@@ -34,7 +74,6 @@ export const Login = () => {
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       <StarBackground />
-      <ThemeToggle />
       
       {/* Back Button - Top Left */}
       <button
@@ -111,38 +150,38 @@ export const Login = () => {
                 />
               </div>
 
+              {/* Error Message */}
+              {error && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+
               {/* Login Button */}
               <button
                 type="submit"
+                disabled={loading}
                 className={cn(
                   "w-full cosmic-button py-3 text-lg font-semibold",
                   "transition-all duration-300 transform",
                   "hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]",
-                  "active:scale-95"
+                  "active:scale-95",
+                  loading && "opacity-50 cursor-not-allowed"
                 )}
               >
-                Sign In
+                {loading ? 'Signing In...' : 'Sign In'}
               </button>
             </form>
 
             {/* Additional Options */}
-            <div className="mt-6 text-center space-y-4">
+            <div className="mt-6 text-center">
               <button
                 onClick={() => navigate('/reset-password')}
                 className="text-sm text-primary hover:text-primary/80 transition-colors duration-300"
               >
                 Forgot your password?
               </button>
-              
-              <div className="text-sm text-foreground/70">
-                Don't have an account?{' '}
-                <a 
-                  href="#" 
-                  className="text-primary hover:text-primary/80 transition-colors duration-300 font-medium"
-                >
-                  Sign up
-                </a>
-              </div>
             </div>
           </div>
         </div>

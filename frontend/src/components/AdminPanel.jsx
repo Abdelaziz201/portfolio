@@ -1,48 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { StarBackground } from './StarBackground';
-import { ThemeToggle } from './ThemeToggle';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Plus, Trash2, Edit3, User, Mail, Phone, MapPin, Github, Linkedin, Instagram, Twitter, ExternalLink, Code, Briefcase, MessageSquare } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Edit3, User, Mail, Phone, MapPin, Github, Linkedin, Instagram, Twitter, ExternalLink, Code, Briefcase, MessageSquare, Container, Bug, FileCode2, LogOut } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const AdminPanel = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  
+  // Logout function
+  const handleLogout = async () => {
+    // Clear all localStorage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('loginTime');
+    
+    // Clear cookies by calling backend logout endpoint
+    try {
+      await fetch(`${API_BASE_URL}/users/logout`, {
+        method: 'POST',
+        credentials: 'include', // Include cookies to clear them
+      });
+    } catch (error) {
+      console.error('Error logging out:', error);
+      // Continue with logout even if backend call fails
+    }
+    
+    // Clear all cookies manually as backup
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+    
+    navigate('/login');
+  };
+
+  // Check authentication on mount
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    
+    if (!token) {
+      // No token, redirect to login
+      navigate('/login');
+      return;
+    }
+    
+    // Token exists, allow access immediately
+    // No backend verification - just check localStorage
+    setIsAuthenticated(true);
+    setCheckingAuth(false);
+  }, [navigate]);
   
   // State for all portfolio data
   const [aboutData, setAboutData] = useState({
-    title: "Passionate Full-Stack Developer",
-    description1: "write here more",
-    description2: "write here even more",
+    _id: null,
+    title: "",
+    description1: "",
+    description2: "",
     cvUrl: "",
-    services: [
-      {
-        icon: "Code",
-        title: "Web Development",
-        description: "Creating responsive websites and web applications with modern frameworks."
-      },
-      {
-        icon: "User",
-        title: "UI/UX Design",
-        description: "Designing intuitive user interfaces and seamless user experiences."
-      },
-      {
-        icon: "Briefcase",
-        title: "Project Management",
-        description: "Leading projects from conception to completion with agile methodologies."
-      }
-    ]
+    services: []
   });
 
   const [contactData, setContactData] = useState({
-    email: "abdelazizabdelkarim2001@gmail.com",
-    phone1: "+905312468942",
-    phone2: "+97433042339",
-    location1: "Qatar, Doha",
-    location2: "Turkey, Ankara",
+    email: "",
+    phone1: "",
+    phone2: "",
+    location1: "",
+    location2: "",
     socialLinks: {
-      linkedin: "https://www.linkedin.com/in/abdelaziz201/",
+      linkedin: "",
       instagram: "",
       twitter: "",
       github: ""
@@ -61,6 +91,115 @@ export const AdminPanel = () => {
   const [messages, setMessages] = useState([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState('');
+
+  // Fetch about me from backend
+  const fetchAboutMe = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/aboutMe`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          const about = data[0]; // Get first entry
+          // Parse services from grid fields (only first 3)
+          let services = [];
+          const gridFields = ['fisrtGrid', 'secondGrid', 'thirdGrid'];
+          
+          try {
+            gridFields.forEach((field) => {
+              if (about[field]) {
+                const service = JSON.parse(about[field]);
+                if (service && service.title) {
+                  services.push(service);
+                }
+              }
+            });
+          } catch (e) {
+            console.error('Error parsing service data:', e);
+          }
+          
+          // If no services found, use defaults
+          if (services.length === 0) {
+            services = [
+              { icon: "Code", title: "Web Development", description: "Creating responsive websites and web applications with modern frameworks." },
+              { icon: "User", title: "UI/UX Design", description: "Designing intuitive user interfaces and seamless user experiences." },
+              { icon: "Briefcase", title: "Project Management", description: "Leading projects from conception to completion with agile methodologies." }
+            ];
+          }
+          
+          // Limit to 3 services
+          services = services.slice(0, 3);
+
+          setAboutData({
+            _id: about._id,
+            title: about.title || "",
+            description1: about.firstParagraph || "",
+            description2: about.secondParagraph || "",
+            cvUrl: "", // CV URL not in backend model yet
+            services: services
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching about me:', error);
+    }
+  };
+
+  // Save about me to backend
+  const saveAboutMe = async () => {
+    try {
+      // Map services to grid fields (only first 3)
+      const gridFields = ['fisrtGrid', 'secondGrid', 'thirdGrid'];
+      const updateData = {
+        title: aboutData.title,
+        firstParagraph: aboutData.description1,
+        secondParagraph: aboutData.description2,
+      };
+      
+      // Add each service to corresponding grid field (limit to 3)
+      const servicesToSave = aboutData.services.slice(0, 3);
+      gridFields.forEach((field, index) => {
+        updateData[field] = servicesToSave[index] 
+          ? JSON.stringify(servicesToSave[index]) 
+          : '';
+      });
+
+      if (aboutData._id) {
+        // Update existing
+        const response = await fetch(`${API_BASE_URL}/aboutMe/${aboutData._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save about me');
+        }
+      } else {
+        // Create new
+        const response = await fetch(`${API_BASE_URL}/aboutMe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create about me');
+        }
+        const created = await response.json();
+        setAboutData({ ...aboutData, _id: created._id });
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error saving about me:', error);
+      alert('Failed to save about me information. Please try again.');
+      return false;
+    }
+  };
 
   // Fetch contact info
   const fetchContactInfo = async () => {
@@ -111,15 +250,32 @@ export const AdminPanel = () => {
   };
 
   const handleSave = async () => {
-    // Save contact info to backend
-    const contactSaved = await saveContactInfo();
+    let allSaved = true;
     
-    if (contactSaved) {
-      // Projects are saved individually when updated, so we just show success
+    // Save about me if on about tab
+    if (activeTab === 'about') {
+      const aboutSaved = await saveAboutMe();
+      if (!aboutSaved) allSaved = false;
+    }
+    
+    // Save contact info if on contact tab
+    if (activeTab === 'contact') {
+      const contactSaved = await saveContactInfo();
+      if (!contactSaved) allSaved = false;
+    }
+    
+    if (allSaved) {
       setIsEditing(false);
       alert('Data saved successfully!');
     }
   };
+
+  // Load about me when about tab is active
+  useEffect(() => {
+    if (activeTab === 'about') {
+      fetchAboutMe();
+    }
+  }, [activeTab]);
 
   // Load contact info when contact tab is active
   useEffect(() => {
@@ -598,10 +754,26 @@ export const AdminPanel = () => {
     }
   }, [activeTab]);
 
+  // Show loading while checking authentication
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden flex items-center justify-center">
+        <StarBackground />
+        <div className="text-center">
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, don't render (will redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       <StarBackground />
-      <ThemeToggle />
       
       {/* Sidebar */}
       <div className="fixed left-0 top-0 h-full w-64 bg-background/90 backdrop-blur-md border-r border-white/10 z-40">
@@ -638,6 +810,14 @@ export const AdminPanel = () => {
                 Save Changes
               </button>
             )}
+            
+            <button
+              onClick={handleLogout}
+              className="w-full px-4 py-2 rounded-lg transition-colors flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
           </div>
         </div>
 
@@ -724,10 +904,42 @@ export const AdminPanel = () => {
 
               {/* Services */}
               <div className="bg-card/50 backdrop-blur-md rounded-xl p-6 border border-white/10">
-                <h3 className="text-xl font-semibold mb-4">Services</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold">Services (Maximum 3)</h3>
+                  {isEditing && aboutData.services.length < 3 && (
+                    <button
+                      onClick={() => {
+                        const newService = {
+                          icon: "Code",
+                          title: "New Service",
+                          description: "Service description"
+                        };
+                        setAboutData({
+                          ...aboutData,
+                          services: [...aboutData.services, newService]
+                        });
+                      }}
+                      className="cosmic-button flex items-center gap-2"
+                    >
+                      <Plus size={16} />
+                      Add Service
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-4">
                   {aboutData.services.map((service, index) => (
-                    <div key={index} className="p-4 border border-white/10 rounded-lg">
+                    <div key={index} className="p-4 border border-white/10 rounded-lg relative">
+                      {isEditing && (
+                        <button
+                          onClick={() => {
+                            const newServices = aboutData.services.filter((_, i) => i !== index);
+                            setAboutData({...aboutData, services: newServices});
+                          }}
+                          className="absolute top-2 right-2 p-2 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium mb-2">Icon</label>
@@ -744,6 +956,9 @@ export const AdminPanel = () => {
                             <option value="Code">Code</option>
                             <option value="User">User</option>
                             <option value="Briefcase">Briefcase</option>
+                            <option value="Container">Container</option>
+                            <option value="Bug">Bug</option>
+                            <option value="FileCode">FileCode</option>
                           </select>
                         </div>
                         <div>
@@ -777,6 +992,9 @@ export const AdminPanel = () => {
                       </div>
                     </div>
                   ))}
+                  {aboutData.services.length === 0 && (
+                    <p className="text-muted-foreground text-center py-4">No services added yet. Click "Add Service" to add one.</p>
+                  )}
                 </div>
               </div>
             </div>

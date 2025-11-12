@@ -25,6 +25,18 @@ const aboutMeSchema = new mongoose.Schema({
         type: String,
         required: false,
     },
+    fourthGrid:{
+        type: String,
+        required: false,
+    },
+    fifthGrid:{
+        type: String,
+        required: false,
+    },
+    sixthGrid:{
+        type: String,
+        required: false,
+    },
 }, {
         timestamps: true,
     

@@ -18,8 +18,8 @@ export const getAboutMe = asyncHandler(async (req, res) => {
 //create about me
 export const createAboutMe = asyncHandler(async (req, res) => {
     try {
-        const { title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid } = req.body;
-        const aboutMe = await AboutMe.create({ title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid });
+        const { title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid, fourthGrid, fifthGrid, sixthGrid } = req.body;
+        const aboutMe = await AboutMe.create({ title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid, fourthGrid, fifthGrid, sixthGrid });
         res.status(201).json(aboutMe);
    } catch (error) {
     res.status(500).json({ message: error.message });
@@ -30,8 +30,8 @@ export const createAboutMe = asyncHandler(async (req, res) => {
 export const updateAboutMe = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid } = req.body;
-        const aboutMe = await AboutMe.findByIdAndUpdate(id, { title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid }, { new: true });
+        const { title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid, fourthGrid, fifthGrid, sixthGrid } = req.body;
+        const aboutMe = await AboutMe.findByIdAndUpdate(id, { title, firstParagraph, secondParagraph, fisrtGrid, secondGrid, thirdGrid, fourthGrid, fifthGrid, sixthGrid }, { new: true });
         res.status(200).json(aboutMe);
    } catch (error) {
     res.status(500).json({ message: error.message });

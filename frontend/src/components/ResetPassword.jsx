@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { StarBackground } from './StarBackground';
-import { ThemeToggle } from './ThemeToggle';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -49,6 +48,7 @@ export const ResetPassword = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies
         body: JSON.stringify({ email }),
       });
 
@@ -101,6 +101,7 @@ export const ResetPassword = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies
         body: JSON.stringify({
           token,
           password: formData.password,
@@ -143,7 +144,6 @@ export const ResetPassword = () => {
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       <StarBackground />
-      <ThemeToggle />
       
       {/* Back Button - Top Left */}
       <button
