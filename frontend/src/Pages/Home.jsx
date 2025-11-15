@@ -12,7 +12,16 @@ export const Home = () => {
     const navigate = useNavigate();
 
     const handleStarClick = () => {
-        navigate('/login');
+        // Check if user is logged in
+        const token = localStorage.getItem('authToken');
+        
+        if (token) {
+            // User is logged in, go to admin panel
+            navigate('/admin');
+        } else {
+            // User is not logged in, go to login page
+            navigate('/login');
+        }
     };
 
     return( 

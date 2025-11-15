@@ -29,30 +29,57 @@ export const AdminPanel = () => {
       // Continue with logout even if backend call fails
     }
     
-    // Clear all cookies manually as backup
-    document.cookie.split(";").forEach((c) => {
-      document.cookie = c
-        .replace(/^ +/, "")
-        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
+    
     
     navigate('/login');
   };
 
   // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    
-    if (!token) {
-      // No token, redirect to login
-      navigate('/login');
-      return;
-    }
-    
-    // Token exists, allow access immediately
-    // No backend verification - just check localStorage
-    setIsAuthenticated(true);
-    setCheckingAuth(false);
+    const verifyAuthentication = async () => {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // No token, redirect to login
+        navigate('/login');
+        return;
+      }
+      
+      // Verify token with backend
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/verify`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // Send token in Authorization header
+          },
+          credentials: 'include', // Also send cookies if available
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.valid) {
+          // Token is valid, allow access
+          setIsAuthenticated(true);
+          setCheckingAuth(false);
+        } else {
+          // Token is invalid or expired
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          localStorage.removeItem('loginTime');
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error('Error verifying token:', error);
+        // On error, remove token and redirect to login for security
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('loginTime');
+        navigate('/login');
+      }
+    };
+
+    verifyAuthentication();
   }, [navigate]);
   
   // State for all portfolio data
@@ -118,13 +145,13 @@ export const AdminPanel = () => {
           }
           
           // If no services found, use defaults
-          if (services.length === 0) {
-            services = [
-              { icon: "Code", title: "Web Development", description: "Creating responsive websites and web applications with modern frameworks." },
-              { icon: "User", title: "UI/UX Design", description: "Designing intuitive user interfaces and seamless user experiences." },
-              { icon: "Briefcase", title: "Project Management", description: "Leading projects from conception to completion with agile methodologies." }
-            ];
-          }
+          // if (services.length === 0) {
+          //   services = [
+          //     { icon: "Code", title: "Web Development", description: "Creating responsive websites and web applications with modern frameworks." },
+          //     { icon: "User", title: "UI/UX Design", description: "Designing intuitive user interfaces and seamless user experiences." },
+          //     { icon: "Briefcase", title: "Project Management", description: "Leading projects from conception to completion with agile methodologies." }
+          //   ];
+          // }
           
           // Limit to 3 services
           services = services.slice(0, 3);
