@@ -4,6 +4,7 @@ import { HeroSection } from "../components/HeroSection";
 import { AboutSection } from "../components/AboutSection";
 import { SkillsSection } from "../components/SkillsSection";
 import { ProjectsSection } from "../components/ProjectsSection";
+import { SpaceWeatherSection } from "../components/SpaceWeatherSection";
 import {ContactSection} from "../components/ContactSection"
 import { Footer } from "../components/Footer";
 import { useNavigate } from "react-router-dom";
@@ -60,6 +61,7 @@ export const Home = () => {
                     <AboutSection/>
                     <SkillsSection/>
                     <ProjectsSection/>
+                    <SpaceWeatherSection/>
                     <ContactSection/>
                 </main> 
 
