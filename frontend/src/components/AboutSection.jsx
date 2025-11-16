@@ -15,7 +15,7 @@ const iconMap = {
 
 export const AboutSection = () => {
   const [aboutData, setAboutData] = useState({
-    title: "Passionate Full-Stack Developer",
+    title: "Full-Stack Developer",
     firstParagraph: "write here more",
     secondParagraph: "write here even more",
     services: [
@@ -53,20 +53,14 @@ export const AboutSection = () => {
               console.error('Error parsing service data:', e);
             }
             
-            // If no services found, use defaults
-            if (services.length === 0) {
-              services = [
-                { icon: "Code", title: "Web Development", description: "Creating responsive websites and web applications with modern frameworks." },
-                { icon: "User", title: "UI/UX Design", description: "Designing intuitive user interfaces and seamless user experiences." },
-                { icon: "Briefcase", title: "Project Management", description: "Leading projects from conception to completion with agile methodologies." }
-              ];
-            }
+            
+           
             
             // Limit to 3 services
             services = services.slice(0, 3);
 
             setAboutData({
-              title: about.title || "Passionate Full-Stack Developer",
+              title: about.title || "Full-Stack Developer",
               firstParagraph: about.firstParagraph || "",
               secondParagraph: about.secondParagraph || "",
               services: services,

@@ -13,7 +13,7 @@ export const SpaceWeatherSection = () => {
   useEffect(() => {
     const fetchAPOD = async () => {
       if (!NASA_API_KEY) {
-        setError('NASA API key not configured. Please add VITE_NASA_API_KEY to your .env file.');
+        setError('NASA API key not configured.');
         setLoading(false);
         return;
       }
