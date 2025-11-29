@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # --- 1. Backend Service (Node/Express) ---
+  backend:
+    build:
+      context: ./backend # Tells Docker where the backend Dockerfile is
+    container_name: portfolio-backend
+    ports:
+      - "5000:5000" # Maps host port 5000 to container port 5000
+    environment:
+      # CRITICAL FIX: This now pulls your MongoDB Atlas string from the root .env file.
+      MONGO_URL: ${MONGO_URL} 
+      
+      # Secrets (Pulled from root .env)
+      JWT_SECRET: ${JWT_SECRET}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      BASE_URL: ${BASE_URL}
+      
+      # CRITICAL FIXES FOR INTERNAL NETWORKING:
+      # This should be the URL the browser uses to access the frontend (for CORS)
+      # Since frontend is exposed on port 80, use http://localhost or http://localhost:80
+      FRONTEND_URL: http://localhost
+      # Set the container's internal port directly
+      PORT: 5000 
+
+    # No 'depends_on' needed here as the dependency (Atlas) is external
+    restart: always
+
+  # --- 2. Frontend Service (React/Vite) ---
+  frontend:
+    build:
+      context: ./frontend # Tells Docker where the frontend Dockerfile is
+      args:
+        # Pass Vite environment variables as build arguments
+        VITE_API_URL: http://localhost:5000/api
+        VITE_NASA_API_KEY: ${VITE_NASA_API_KEY}
+    container_name: portfolio-frontend
+    ports:
+      - "80:80" # Maps host port 80 (standard HTTP) to container port 80
+    depends_on:
+      - backend
+    restart: always
+
+# Removed the 'volumes:' section at the bottom

@@ -22,9 +22,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true // Allow cookies to be sent
-}));
+   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+   credentials: true // Allow cookies to be sent
+  }));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -39,7 +39,9 @@ app.use("/api/skills", skillsRouter);
 app.use("/api/users", userRouter);
 //app.use("/api/auth", authRouter);
 
-app.listen(PORT, () =>{
-    connectDB();
-    console.log('Server started at http://localhost:' + PORT);
-})
+connectDB(); 
+
+
+app.listen(PORT, '0.0.0.0', () =>{
+    console.log(`Server running successfully on port ${PORT} (internal 0.0.0.0)`);
+  });
