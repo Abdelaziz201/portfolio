@@ -16,12 +16,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
-      BASE_URL: ${BASE_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
       
-      # CRITICAL FIXES FOR INTERNAL NETWORKING:
-      # This should be the URL the browser uses to access the frontend (for CORS)
-      # Since frontend is exposed on port 80, use http://localhost or http://localhost:80
-      FRONTEND_URL: http://localhost
+      
       # Set the container's internal port directly
       PORT: 5000 
 
