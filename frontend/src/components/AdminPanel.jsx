@@ -144,14 +144,7 @@ export const AdminPanel = () => {
             console.error('Error parsing service data:', e);
           }
           
-          // If no services found, use defaults
-          // if (services.length === 0) {
-          //   services = [
-          //     { icon: "Code", title: "Web Development", description: "Creating responsive websites and web applications with modern frameworks." },
-          //     { icon: "User", title: "UI/UX Design", description: "Designing intuitive user interfaces and seamless user experiences." },
-          //     { icon: "Briefcase", title: "Project Management", description: "Leading projects from conception to completion with agile methodologies." }
-          //   ];
-          // }
+          
           
           // Limit to 3 services
           services = services.slice(0, 3);

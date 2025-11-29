@@ -71,7 +71,8 @@ export const signin = asyncHandler(async (req, res) => {
 
     res.status(200).json({
         message: "User signed in successfully",
-       
+        token: token, // Return token for localStorage (cookie is also set for httpOnly security)
+        user: userData // Return user data
     });
 }); 
 
