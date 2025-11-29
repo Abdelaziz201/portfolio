@@ -20,7 +20,7 @@ export const verifyToken = asyncHandler(async (req, res) => {
             return res.status(401).json({ message: "No token provided", valid: false });
         }
 
-        const decoded = jwt.verify(token, process.env.jwt_sECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.userId).select('-password');
 
         if (!user) {
@@ -30,7 +30,7 @@ export const verifyToken = asyncHandler(async (req, res) => {
         res.status(200).json({ 
             message: "Token is valid", 
             valid: true,
-            user: user 
+           
         });
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
@@ -71,8 +71,7 @@ export const signin = asyncHandler(async (req, res) => {
 
     res.status(200).json({
         message: "User signed in successfully",
-        user: userData,
-        token,
+       
     });
 }); 
 
