@@ -34,7 +34,7 @@ services:
       context: ./frontend # Tells Docker where the frontend Dockerfile is
       args:
         # Pass Vite environment variables as build arguments
-        VITE_API_URL: http://localhost:5000/api
+        VITE_API_URL: ${VITE_API_URL}
         VITE_NASA_API_KEY: ${VITE_NASA_API_KEY}
     container_name: portfolio-frontend
     ports:
