@@ -37,6 +37,10 @@ const aboutMeSchema = new mongoose.Schema({
         type: String,
         required: false,
     },
+    cvUrl:{
+        type: String,
+        required: false,
+    },
 }, {
         timestamps: true,
     

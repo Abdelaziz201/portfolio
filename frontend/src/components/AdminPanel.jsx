@@ -154,13 +154,169 @@ export const AdminPanel = () => {
             title: about.title || "",
             description1: about.firstParagraph || "",
             description2: about.secondParagraph || "",
-            cvUrl: "", // CV URL not in backend model yet
+            cvUrl: about.cvUrl || "",
             services: services
           });
         }
       }
     } catch (error) {
       console.error('Error fetching about me:', error);
+    }
+  };
+
+  // Upload CV file
+  const uploadCV = async (file) => {
+    try {
+      // If there's an existing CV, delete it first
+      if (aboutData.cvUrl && !aboutData.cvUrl.startsWith('http')) {
+        try {
+          const oldFilename = aboutData.cvUrl.split('/').pop();
+          await fetch(`${API_BASE_URL}/aboutMe/delete-cv/${oldFilename}`, {
+            method: 'DELETE',
+          });
+        } catch (error) {
+          // If deletion fails, continue with upload anyway
+          console.warn('Failed to delete old CV, continuing with upload:', error);
+        }
+      }
+
+      const formData = new FormData();
+      formData.append('cv', file);
+
+      const response = await fetch(`${API_BASE_URL}/aboutMe/upload-cv`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.cvUrl) {
+          const updatedAboutData = { ...aboutData, cvUrl: data.cvUrl };
+          setAboutData(updatedAboutData);
+          
+          // Auto-save cvUrl to database immediately to prevent data loss
+          try {
+            // Map services to grid fields (only first 3)
+            const gridFields = ['fisrtGrid', 'secondGrid', 'thirdGrid'];
+            const updateData = {
+              title: updatedAboutData.title || '',
+              firstParagraph: updatedAboutData.description1 || '',
+              secondParagraph: updatedAboutData.description2 || '',
+              cvUrl: data.cvUrl,
+            };
+            
+            // Add each service to corresponding grid field (limit to 3)
+            const servicesToSave = updatedAboutData.services.slice(0, 3);
+            gridFields.forEach((field, index) => {
+              updateData[field] = servicesToSave[index] 
+                ? JSON.stringify(servicesToSave[index]) 
+                : '';
+            });
+
+            if (aboutData._id) {
+              // Update existing record
+              await fetch(`${API_BASE_URL}/aboutMe/${aboutData._id}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData),
+              });
+            } else {
+              // Create new record if it doesn't exist
+              const createResponse = await fetch(`${API_BASE_URL}/aboutMe`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData),
+              });
+              
+              if (createResponse.ok) {
+                const created = await createResponse.json();
+                setAboutData({ ...updatedAboutData, _id: created._id });
+              }
+            }
+          } catch (error) {
+            console.error('Error auto-saving CV URL:', error);
+            // Don't show error to user, just log it - they can still save manually
+          }
+          
+          return data.cvUrl;
+        }
+      } else {
+        throw new Error('Failed to upload CV');
+      }
+    } catch (error) {
+      console.error('Error uploading CV:', error);
+      alert('Failed to upload CV. Please try again.');
+      throw error;
+    }
+  };
+
+  // Delete CV file
+  const deleteCV = async () => {
+    if (!aboutData.cvUrl) {
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete the CV? This will remove the file from the server.')) {
+      return;
+    }
+
+    try {
+      // Extract filename from cvUrl
+      // cvUrl format: /api/photos/cv-filename.pdf
+      const filename = aboutData.cvUrl.split('/').pop();
+      
+      const response = await fetch(`${API_BASE_URL}/aboutMe/delete-cv/${filename}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Clear cvUrl from state
+        const updatedAboutData = { ...aboutData, cvUrl: '' };
+        setAboutData(updatedAboutData);
+        
+        // Auto-save the removal of cvUrl to database
+        if (aboutData._id) {
+          try {
+            const gridFields = ['fisrtGrid', 'secondGrid', 'thirdGrid'];
+            const updateData = {
+              title: updatedAboutData.title,
+              firstParagraph: updatedAboutData.description1,
+              secondParagraph: updatedAboutData.description2,
+              cvUrl: '', // Clear cvUrl
+            };
+            
+            const servicesToSave = updatedAboutData.services.slice(0, 3);
+            gridFields.forEach((field, index) => {
+              updateData[field] = servicesToSave[index] 
+                ? JSON.stringify(servicesToSave[index]) 
+                : '';
+            });
+
+            await fetch(`${API_BASE_URL}/aboutMe/${aboutData._id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(updateData),
+            });
+          } catch (error) {
+            console.error('Error auto-saving CV removal:', error);
+            // Don't show error, just log it
+          }
+        }
+        
+        alert('CV deleted successfully!');
+      } else {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to delete CV');
+      }
+    } catch (error) {
+      console.error('Error deleting CV:', error);
+      alert('Failed to delete CV. Please try again.');
     }
   };
 
@@ -173,6 +329,7 @@ export const AdminPanel = () => {
         title: aboutData.title,
         firstParagraph: aboutData.description1,
         secondParagraph: aboutData.description2,
+        cvUrl: aboutData.cvUrl,
       };
       
       // Add each service to corresponding grid field (limit to 3)
@@ -909,15 +1066,72 @@ export const AdminPanel = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium mb-2">CV Download URL</label>
-                    <input
-                      type="url"
-                      value={aboutData.cvUrl}
-                      onChange={(e) => setAboutData({...aboutData, cvUrl: e.target.value})}
-                      disabled={!isEditing}
-                      placeholder="https://example.com/cv.pdf"
-                      className="w-full px-4 py-3 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
-                    />
+                    <label className="block text-sm font-medium mb-2">CV Download</label>
+                    <div className="space-y-3">
+                      {aboutData.cvUrl && (
+                        <div className="flex items-center gap-3 p-3 border border-white/10 rounded-lg bg-background/30">
+                          <a
+                            href={aboutData.cvUrl.startsWith('http') 
+                              ? aboutData.cvUrl 
+                              : `${API_BASE_URL.replace('/api', '')}${aboutData.cvUrl.startsWith('/') ? '' : '/'}${aboutData.cvUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary/80 flex items-center gap-2"
+                          >
+                            <ExternalLink size={16} />
+                            View Current CV
+                          </a>
+                          {isEditing && (
+                            <button
+                              onClick={deleteCV}
+                              className="ml-auto p-2 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                              title="Delete CV file"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {isEditing && (
+                        <div>
+                          <label className="w-full p-3 border-2 border-dashed border-primary/30 rounded-lg text-primary hover:border-primary/50 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                            <Plus size={16} />
+                            {aboutData.cvUrl ? 'Replace CV' : 'Upload CV (PDF)'}
+                            <input
+                              type="file"
+                              accept=".pdf,application/pdf"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  if (file.size > 10 * 1024 * 1024) {
+                                    alert('CV file size must be less than 10MB');
+                                    return;
+                                  }
+                                  try {
+                                    await uploadCV(file);
+                                    alert('CV uploaded successfully!');
+                                  } catch (error) {
+                                    // Error already handled in uploadCV
+                                  }
+                                }
+                                e.target.value = ''; // Reset input
+                              }}
+                            />
+                          </label>
+                          <p className="text-xs text-muted-foreground mt-2 text-center">
+                            Or enter a URL below
+                          </p>
+                          <input
+                            type="url"
+                            value={aboutData.cvUrl}
+                            onChange={(e) => setAboutData({...aboutData, cvUrl: e.target.value})}
+                            placeholder="https://example.com/cv.pdf"
+                            className="w-full px-4 py-3 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 mt-2"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

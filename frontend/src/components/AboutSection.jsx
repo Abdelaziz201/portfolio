@@ -64,8 +64,18 @@ export const AboutSection = () => {
               firstParagraph: about.firstParagraph || "",
               secondParagraph: about.secondParagraph || "",
               services: services,
-              cvUrl: ""
+              cvUrl: about.cvUrl || ""
             });
+            
+            // Debug: Log CV URL
+            if (about.cvUrl) {
+              console.log('CV URL from database:', about.cvUrl);
+              const baseUrl = API_BASE_URL.replace('/api', '');
+              const fullUrl = about.cvUrl.startsWith('http') 
+                ? about.cvUrl 
+                : `${baseUrl}${about.cvUrl.startsWith('/') ? '' : '/'}${about.cvUrl}`;
+              console.log('Constructed CV URL:', fullUrl);
+            }
           }
         }
       } catch (error) {
@@ -120,10 +130,26 @@ export const AboutSection = () => {
 
               {aboutData.cvUrl && (
                 <a
-                  href={aboutData.cvUrl}
+                  href={(() => {
+                    // If it's already a full URL, use it as-is
+                    if (aboutData.cvUrl.startsWith('http://') || aboutData.cvUrl.startsWith('https://')) {
+                      return aboutData.cvUrl;
+                    }
+                    // Construct the full URL from the base API URL
+                    // API_BASE_URL is like "http://localhost:5000/api"
+                    // cvUrl is like "/api/photos/cv-xxx.pdf"
+                    // We need: "http://localhost:5000/api/photos/cv-xxx.pdf"
+                    const baseUrl = API_BASE_URL.replace('/api', ''); // Remove /api from end
+                    const cvPath = aboutData.cvUrl.startsWith('/') ? aboutData.cvUrl : `/${aboutData.cvUrl}`;
+                    return `${baseUrl}${cvPath}`;
+                  })()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-6 py-2 rounded-full border border-primary text-primary hover:bg-primary/10 transition-colors duration-300"
+                  onClick={(e) => {
+                    // Debug: Log the URL being accessed
+                    console.log('CV Download URL:', e.currentTarget.href);
+                  }}
                 >
                   Download CV
                 </a>
