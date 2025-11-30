@@ -61,7 +61,7 @@ export const Home = () => {
                     <AboutSection/>
                     <SkillsSection/>
                     <ProjectsSection/>
-                    <SpaceWeatherSection/>
+                    {/* <SpaceWeatherSection/> */}
                     <ContactSection/>
                 </main> 
 

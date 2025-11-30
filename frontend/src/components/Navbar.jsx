@@ -91,7 +91,7 @@
 
 
 import { cn } from "@/lib/utils";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Thermometer } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const navItems = [
