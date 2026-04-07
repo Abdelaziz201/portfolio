@@ -4,7 +4,6 @@ import { signin, updateUser, deleteUser, forgotPassword, resetPassword, verifyTo
 const router = express.Router();
 
 router.post("/signin", signin);
-router.post("/signup", signup);
 router.post("/logout", logout);
 router.get("/verify", verifyToken);
 router.put("/:id", updateUser);
