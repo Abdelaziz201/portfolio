@@ -79,7 +79,6 @@ export const signin = asyncHandler(async (req, res) => {
 
 
 
-
 //update user
 export const updateUser = asyncHandler(async (req, res) => {
     const { id } = req.params;
