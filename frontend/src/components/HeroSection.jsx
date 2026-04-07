@@ -82,11 +82,8 @@ export const HeroSection = () => {
                         <span className="text-gradient ml-2 opacity-0 animate-fade-in-delay-2"> Abdelkarim</span>
                     </h1>
                     <p className="text-lg md:text-xl text-muted-foreground max-2-2xl mx-auto opacity-0 animate-fade-in-delay-3">
-                        Recently graduated Software Engineer. Full-Stack developer with
-                        professional focus on building scalable applications using Node.js and React.js.
-                        Passionate about exploring FastAPI for AI-driven
-                        backend and expanding expertise in DevOps to enhance deployment and system
-                        reliability.
+                                                               Full-Stack Software Engineer. 
+                            I specialize in architecting modern web applications with a focus on clean code, scalability, and system reliability.
                     </p>
                     
                     {/* New container using custom CSS class */}
