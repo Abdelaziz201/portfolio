@@ -8,3 +8,5 @@ export const connectDB = async () => {
         console.error(`Mongo connection error: ${error.message}`);
     }
 }
+
+

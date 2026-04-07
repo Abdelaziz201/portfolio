@@ -2,9 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { StarBackground } from './StarBackground';
 import { useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Plus, Trash2, Edit3, User, Mail, Phone, MapPin, Github, Linkedin, Instagram, Twitter, ExternalLink, Code, Briefcase, MessageSquare, Container, Bug, FileCode2, LogOut } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Edit3, User, Mail, Phone, MapPin, Github, Linkedin, Instagram, Twitter, ExternalLink, Code, Briefcase, MessageSquare, Container, Bug, FileCode2, LogOut, Copy, ImageIcon } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_ORIGIN = API_BASE_URL.replace('/api', '');
+
+const getDisplayImageUrl = (image) => {
+  if (!image) return '';
+  if (image.startsWith('http')) return image;
+  if (image.startsWith('/api/photos/')) return `${API_ORIGIN}${image}`;
+  if (image.startsWith('/')) return image;
+  return `${API_ORIGIN}/${image}`;
+};
 
 export const AdminPanel = () => {
   const navigate = useNavigate();
@@ -108,6 +117,10 @@ export const AdminPanel = () => {
 
   const [projectsData, setProjectsData] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [photosInventory, setPhotosInventory] = useState([]);
+  const [photosInventoryLoading, setPhotosInventoryLoading] = useState(false);
+  const [photosInventoryError, setPhotosInventoryError] = useState('');
+  const [insertPhotoTargetId, setInsertPhotoTargetId] = useState('');
 
   const [skillsData, setSkillsData] = useState([]);
 
@@ -472,8 +485,19 @@ export const AdminPanel = () => {
   useEffect(() => {
     if (activeTab === 'projects') {
       fetchProjects();
+      fetchPhotosInventory();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'projects' || projectsData.length === 0) return;
+    setInsertPhotoTargetId((prev) => {
+      const stillValid = prev && projectsData.some((p) => String(p._id || p.id) === String(prev));
+      if (stillValid) return prev;
+      const first = projectsData[0];
+      return first ? String(first._id || first.id) : '';
+    });
+  }, [projectsData, activeTab]);
 
   // Fetch projects from backend
   const fetchProjects = async () => {
@@ -500,6 +524,55 @@ export const AdminPanel = () => {
     } finally {
       setProjectsLoading(false);
     }
+  };
+
+  const fetchPhotosInventory = async () => {
+    setPhotosInventoryLoading(true);
+    setPhotosInventoryError('');
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE_URL}/projects/photos-inventory`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error(response.status === 401 ? 'Sign in required to list photos' : 'Failed to load photos list');
+      }
+      const data = await response.json();
+      setPhotosInventory(Array.isArray(data.files) ? data.files : []);
+    } catch (error) {
+      console.error('Error fetching photos inventory:', error);
+      setPhotosInventoryError(error.message || 'Failed to load photos');
+    } finally {
+      setPhotosInventoryLoading(false);
+    }
+  };
+
+  const copyToClipboard = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert(`${label} copied`);
+    } catch {
+      window.prompt(`Copy ${label}:`, text);
+    }
+  };
+
+  const insertInventoryPhotoIntoProject = (projectId, photoPath) => {
+    if (!isEditing) return;
+    const project = projectsData.find((p) => String(p._id || p.id) === String(projectId));
+    if (!project) return;
+    if (!project._id) {
+      alert('Save the project first (needs a server id).');
+      return;
+    }
+    if ((project.images || []).includes(photoPath)) {
+      alert('That project already includes this image.');
+      return;
+    }
+    const newImages = [...(project.images || []), photoPath];
+    updateProject(projectId, 'images', newImages);
   };
 
   const addNewProject = async () => {
@@ -953,7 +1026,7 @@ export const AdminPanel = () => {
       <StarBackground />
       
       {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-64 bg-background/90 backdrop-blur-md border-r border-white/10 z-40">
+      <div className="fixed left-0 top-0 h-full w-64 bg-background/90 backdrop-blur-md border-r border-white/10 z-40 width: max(250px, 25vw)">
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3 mb-4">
@@ -1395,6 +1468,107 @@ export const AdminPanel = () => {
                 </div>
               </div>
 
+              <div className="bg-card/50 backdrop-blur-md rounded-xl p-6 border border-white/10">
+                <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <ImageIcon className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-lg font-semibold">Photos on server</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Files in <span className="font-mono text-xs">backend/Photos</span>. Copy a path or add it to a project while editing.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchPhotosInventory}
+                    disabled={photosInventoryLoading}
+                    className={cn(
+                      'px-4 py-2 rounded-lg border transition-colors text-sm',
+                      'bg-background/50 backdrop-blur-sm border-white/20',
+                      'hover:bg-white/10 disabled:opacity-50'
+                    )}
+                  >
+                    {photosInventoryLoading ? 'Refreshing…' : 'Refresh list'}
+                  </button>
+                </div>
+
+                {isEditing && projectsData.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <label className="text-sm font-medium whitespace-nowrap">Add images to project</label>
+                    <select
+                      value={insertPhotoTargetId}
+                      onChange={(e) => setInsertPhotoTargetId(e.target.value)}
+                      className="flex-1 min-w-[12rem] max-w-md px-3 py-2 rounded-lg border border-white/20 bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                    >
+                      {projectsData.map((p) => {
+                        const pid = String(p._id || p.id);
+                        return (
+                          <option key={pid} value={pid}>
+                            {p.title || 'Untitled'}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                {photosInventoryError && (
+                  <p className="text-sm text-red-400 mb-3">{photosInventoryError}</p>
+                )}
+
+                {photosInventoryLoading && photosInventory.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Loading photos list…</p>
+                ) : photosInventory.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No image files found in Photos.</p>
+                ) : (
+                  <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {photosInventory.map((f) => (
+                      <li
+                        key={f.filename}
+                        className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-white/10 bg-background/30"
+                      >
+                        <img
+                          src={getDisplayImageUrl(f.url)}
+                          alt=""
+                          className="w-14 h-14 object-cover rounded-md shrink-0 bg-muted"
+                        />
+                        <span className="text-xs font-mono truncate flex-1 min-w-[10rem]" title={f.filename}>
+                          {f.filename}
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(f.url, 'API path')}
+                            className="px-3 py-1.5 rounded-lg text-xs border border-white/20 bg-background/50 hover:bg-white/10 flex items-center gap-1"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            Path
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(`${API_ORIGIN}${f.url}`, 'Full URL')}
+                            className="px-3 py-1.5 rounded-lg text-xs border border-white/20 bg-background/50 hover:bg-white/10 flex items-center gap-1"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            Full URL
+                          </button>
+                          {isEditing && insertPhotoTargetId && (
+                            <button
+                              type="button"
+                              onClick={() => insertInventoryPhotoIntoProject(insertPhotoTargetId, f.url)}
+                              className="px-3 py-1.5 rounded-lg text-xs cosmic-button"
+                            >
+                              Add to project
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               {projectsLoading && projectsData.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">Loading projects...</p>
@@ -1503,7 +1677,7 @@ export const AdminPanel = () => {
                             <div className="flex-1 flex items-center gap-3">
                               {image && (
                                 <img 
-                                  src={image.startsWith('http') || image.startsWith('/') ? image : `${API_BASE_URL.replace('/api', '')}${image}`}
+                                  src={getDisplayImageUrl(image)}
                                   alt={`Project image ${imageIndex + 1}`}
                                   className="w-16 h-16 object-cover rounded-lg"
                                   onError={(e) => {

@@ -147,4 +147,35 @@ export const deleteImage = asyncHandler(async (req, res) => {
     res.status(200).json({ message: "Image deleted successfully" });
 })
 
-//hi, I want to do the projan i add more projects from the admin page, or delete or whatever i have apis for, but i have a problem now that i did not take photos into account, can u make it so i can upload photos and every photo get an ID and get saved in photos folde
+const PHOTOS_DIR = path.join(__dirname, '../Photos');
+const IMAGE_EXT = /\.(png|jpe?g|webp|gif|svg|avif|bmp)$/i;
+
+// List image files in Photos (admin inventory)
+export const listPhotosInventory = asyncHandler(async (req, res) => {
+    if (!fs.existsSync(PHOTOS_DIR)) {
+        return res.status(200).json({ files: [] });
+    }
+
+    const names = fs.readdirSync(PHOTOS_DIR);
+    const files = names
+        .map((name) => {
+            const full = path.join(PHOTOS_DIR, name);
+            let stat;
+            try {
+                stat = fs.statSync(full);
+            } catch {
+                return null;
+            }
+            if (!stat.isFile() || !IMAGE_EXT.test(name)) return null;
+            return {
+                filename: name,
+                url: `/api/photos/${name}`,
+                mtimeMs: stat.mtimeMs,
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.mtimeMs - a.mtimeMs)
+        .map(({ filename, url }) => ({ filename, url }));
+
+    res.status(200).json({ files });
+})
